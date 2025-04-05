@@ -1,5 +1,5 @@
 import React, {
-  useCallback, useLayoutEffect, useRef,
+  useCallback, useLayoutEffect, useRef, useState,
 } from '../../../../lib/teact/teact';
 
 import type {
@@ -32,6 +32,9 @@ import ChatForumLastMessage from '../../../common/ChatForumLastMessage';
 import Icon from '../../../common/icons/Icon';
 import MessageSummary from '../../../common/MessageSummary';
 import TypingStatus from '../../../common/TypingStatus';
+import {useIsIntersecting} from "../../../../hooks/useIntersectionObserver";
+import {getGlobal} from "../../../../global";
+import {selectChatMessages} from "../../../../global/selectors";
 
 const ANIMATION_DURATION = 200;
 
@@ -86,6 +89,10 @@ export default function useChatListEntry({
   const mediaThumbnail = mediaHasPreview ? getMessageMediaThumbDataUri(mediaContent) : undefined;
   const mediaBlobUrl = useMedia(mediaHasPreview ? getMessageMediaHash(mediaContent, 'micro') : undefined);
   const isRoundVideo = Boolean(lastMessage && getMessageRoundVideo(lastMessage));
+
+  const global = getGlobal();
+  const isIntersecting = useIsIntersecting(ref, chat ? observeIntersection : undefined);
+  const [sentCount, setSentCount] = useState<number | null>(null);
 
   const renderLastMessageOrTyping = useCallback(() => {
     if (!isSavedDialog && !isPreview
@@ -188,9 +195,35 @@ export default function useChatListEntry({
     }, ANIMATION_DURATION + ANIMATION_END_DELAY);
   }, [withInterfaceAnimations, orderDiff, animationType]);
 
+  // Counting sent messages in group and personal chat rooms
+  useLayoutEffect(() => {
+    if (isIntersecting && chat.type !== 'chatTypeChannel') {
+      const messages = selectChatMessages(global, chat.id);
+      let sentMessagesCount = 0;
+
+      for (const message in messages) {
+        if (
+          messages[message].senderId === global.currentUserId ||
+          messages[message].savedPeerId === global.currentUserId
+        ) {
+          sentMessagesCount++;
+        }
+      }
+
+      const timeout = setTimeout(() => {
+        setSentCount(sentMessagesCount);
+      }, ANIMATION_DURATION);
+
+      return () => {
+        clearTimeout(timeout);
+      };
+    }
+  }, [chat, isIntersecting, global]);
+
   return {
     renderSubtitle,
     ref,
+    sentCount,
   };
 }
 

@@ -69,6 +69,7 @@ import Icon from '../../common/icons/Icon';
 import StarIcon from '../../common/icons/StarIcon';
 import LastMessageMeta from '../../common/LastMessageMeta';
 import ListItem from '../../ui/ListItem';
+import Badge from '../../ui/Badge';
 import ChatFolderModal from '../ChatFolderModal.async';
 import MuteChatModal from '../MuteChatModal.async';
 import ChatBadge from './ChatBadge';
@@ -177,7 +178,7 @@ const Chat: FC<OwnProps & StateProps> = ({
 
   useEnsureMessage(isSavedDialog ? currentUserId : chatId, lastMessageId, lastMessage);
 
-  const { renderSubtitle, ref } = useChatListEntry({
+  const { renderSubtitle, ref, sentCount } = useChatListEntry({
     chat,
     chatId,
     lastMessage,
@@ -322,6 +323,13 @@ const Chat: FC<OwnProps & StateProps> = ({
     className,
   );
 
+  const sentCountText = sentCount !== null ? String(sentCount) : "Подсчет сообщений...";
+  const sentCountClassName = buildClassName(
+    'sent-count',
+    sentCount !== null ? 'count' : '',
+    sentCount === 0 ? 'empty' : '',
+  );
+
   return (
     <ListItem
       ref={ref}
@@ -386,6 +394,12 @@ const Chat: FC<OwnProps & StateProps> = ({
         </div>
         <div className="subtitle">
           {renderSubtitle()}
+          {chat.type !== 'chatTypeChannel' && (
+            <Badge
+              text={sentCountText}
+              className={sentCountClassName}
+            />
+          )}
           {!isPreview && (
             <ChatBadge
               chat={chat}
