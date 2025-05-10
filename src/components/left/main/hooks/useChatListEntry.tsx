@@ -1,5 +1,5 @@
 import React, {
-  useCallback, useLayoutEffect, useRef,
+  useCallback, useLayoutEffect, useRef, useState,
 } from '../../../../lib/teact/teact';
 
 import type {
@@ -18,6 +18,7 @@ import {
   getMessageSenderName,
   getMessageSticker,
   getMessageVideo,
+  isChatChannel,
 } from '../../../../global/helpers';
 import buildClassName from '../../../../util/buildClassName';
 import renderText from '../../../common/helpers/renderText';
@@ -25,6 +26,7 @@ import { renderTextWithEntities } from '../../../common/helpers/renderTextWithEn
 import { ChatAnimationTypes } from './useChatAnimationType';
 
 import useEnsureStory from '../../../../hooks/useEnsureStory';
+import { useIsIntersecting } from '../../../../hooks/useIntersectionObserver';
 import useMedia from '../../../../hooks/useMedia';
 import useOldLang from '../../../../hooks/useOldLang';
 
@@ -52,6 +54,8 @@ export default function useChatListEntry({
   isTopic,
   isSavedDialog,
   isPreview,
+  currentUserId,
+  messages,
 }: {
   chat?: ApiChat;
   topics?: Record<number, ApiTopic>;
@@ -66,6 +70,8 @@ export default function useChatListEntry({
   isTopic?: boolean;
   isSavedDialog?: boolean;
   isPreview?: boolean;
+  currentUserId: string;
+  messages?: Record<number, ApiMessage>;
 
   animationType: ChatAnimationTypes;
   orderDiff: number;
@@ -86,6 +92,10 @@ export default function useChatListEntry({
   const mediaThumbnail = mediaHasPreview ? getMessageMediaThumbDataUri(mediaContent) : undefined;
   const mediaBlobUrl = useMedia(mediaHasPreview ? getMessageMediaHash(mediaContent, 'micro') : undefined);
   const isRoundVideo = Boolean(lastMessage && getMessageRoundVideo(lastMessage));
+
+  const isIntersecting = useIsIntersecting(ref, chat ? observeIntersection : undefined);
+  // eslint-disable-next-line no-null/no-null
+  const [sentCount, setSentCount] = useState<number | null>(null);
 
   const renderLastMessageOrTyping = useCallback(() => {
     if (!isSavedDialog && !isPreview
@@ -188,9 +198,32 @@ export default function useChatListEntry({
     }, ANIMATION_DURATION + ANIMATION_END_DELAY);
   }, [withInterfaceAnimations, orderDiff, animationType]);
 
+  // Counting sent messages in group and personal chat rooms
+  useLayoutEffect(() => {
+    if (chat && isIntersecting && !isChatChannel(chat)) {
+      let sentMessagesCount = 0;
+
+      for (const message of Object.values(messages || {})) {
+        if (message.senderId === currentUserId || message.savedPeerId === currentUserId) {
+          sentMessagesCount++;
+        }
+      }
+
+      const timeout = setTimeout(() => {
+        setSentCount(sentMessagesCount);
+      }, ANIMATION_DURATION);
+
+      return () => {
+        clearTimeout(timeout);
+      };
+    }
+    return undefined;
+  }, [chat, currentUserId, isIntersecting, messages]);
+
   return {
     renderSubtitle,
     ref,
+    sentCount,
   };
 }
 

@@ -21,6 +21,7 @@ import { StoryViewerOrigin } from '../../../types';
 
 import {
   groupStatefulContent,
+  isChatChannel,
   isUserId,
   isUserOnline,
 } from '../../../global/helpers';
@@ -31,6 +32,7 @@ import {
   selectChatLastMessage,
   selectChatLastMessageId,
   selectChatMessage,
+  selectChatMessages,
   selectCurrentMessageList,
   selectDraft,
   selectIsForumPanelClosed,
@@ -68,6 +70,7 @@ import FullNameTitle from '../../common/FullNameTitle';
 import Icon from '../../common/icons/Icon';
 import StarIcon from '../../common/icons/StarIcon';
 import LastMessageMeta from '../../common/LastMessageMeta';
+import Badge from '../../ui/Badge';
 import ListItem from '../../ui/ListItem';
 import ChatFolderModal from '../ChatFolderModal.async';
 import MuteChatModal from '../MuteChatModal.async';
@@ -114,6 +117,7 @@ type StateProps = {
   lastMessage?: ApiMessage;
   currentUserId: string;
   isSynced?: boolean;
+  messages?: Record<number, ApiMessage>;
 };
 
 const Chat: FC<OwnProps & StateProps> = ({
@@ -151,6 +155,7 @@ const Chat: FC<OwnProps & StateProps> = ({
   className,
   isSynced,
   onDragEnter,
+  messages,
 }) => {
   const {
     openChat,
@@ -177,7 +182,7 @@ const Chat: FC<OwnProps & StateProps> = ({
 
   useEnsureMessage(isSavedDialog ? currentUserId : chatId, lastMessageId, lastMessage);
 
-  const { renderSubtitle, ref } = useChatListEntry({
+  const { renderSubtitle, ref, sentCount } = useChatListEntry({
     chat,
     chatId,
     lastMessage,
@@ -193,6 +198,8 @@ const Chat: FC<OwnProps & StateProps> = ({
     isSavedDialog,
     isPreview,
     topics,
+    currentUserId,
+    messages,
   });
 
   const getIsForumPanelClosed = useSelectorSignal(selectIsForumPanelClosed);
@@ -322,6 +329,15 @@ const Chat: FC<OwnProps & StateProps> = ({
     className,
   );
 
+  // eslint-disable-next-line no-null/no-null
+  const sentCountText = sentCount !== null ? String(sentCount) : 'Подсчет сообщений...';
+  const sentCountClassName = buildClassName(
+    'sent-count',
+    // eslint-disable-next-line no-null/no-null
+    sentCount !== null ? 'count' : '',
+    sentCount === 0 ? 'empty' : '',
+  );
+
   return (
     <ListItem
       ref={ref}
@@ -386,6 +402,12 @@ const Chat: FC<OwnProps & StateProps> = ({
         </div>
         <div className="subtitle">
           {renderSubtitle()}
+          {!isChatChannel(chat) && (
+            <Badge
+              text={sentCountText}
+              className={sentCountClassName}
+            />
+          )}
           {!isPreview && (
             <ChatBadge
               chat={chat}
@@ -494,6 +516,7 @@ export default memo(withGlobal<OwnProps>(
       topics: topicsInfo?.topicsById,
       isSynced: global.isSynced,
       lastMessageStory,
+      messages: selectChatMessages(global, chatId),
     };
   },
 )(Chat));

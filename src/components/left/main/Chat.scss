@@ -406,6 +406,28 @@
       line-height: initial;
       margin-inline: 0;
     }
+
+    .subtitle {
+      .sent-count {
+        background-color: var(--color-sent-count);
+        display: inline-block;
+        min-width: 10rem;
+        overflow: hidden;
+        white-space: nowrap;
+        transition: 0.2s linear;
+
+        &.count {
+          opacity: 1;
+          min-width: 1.5rem;
+
+          &.empty {
+            opacity: 0;
+            visibility: hidden;
+            width: 0;
+          }
+        }
+      }
+    }
   }
 
   &[dir="rtl"] {
